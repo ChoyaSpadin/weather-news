@@ -91,6 +91,24 @@ export default function App() {
     }
   }
 
+  function getBackgroundClass(weather) {
+    if (!weather)
+      return "from-slate-100 to-slate-300 dark:from-slate-900 dark:to-slate-700";
+
+    const condition = weather.weather[0].main.toLowerCase();
+
+    if (condition.includes("clear")) return "from-blue-400 to-cyan-500";
+    if (condition.includes("cloud")) return "from-gray-400 to-gray-600";
+    if (condition.includes("rain")) return "from-blue-700 to-gray-800";
+    if (condition.includes("thunderstorm"))
+      return "from-purple-700 to-gray-900";
+    if (condition.includes("snow")) return "from-blue-200 to-white";
+    if (condition.includes("mist") || condition.includes("fog"))
+      return "from-gray-300 to-gray-500";
+
+    return "from-slate-100 to-slate-300 dark:from-slate-900 dark:to-slate-700";
+  }
+
   // Notícias (GNews)
   async function fetchNews(cityName) {
     try {
@@ -114,7 +132,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-6">
+    <div
+      className={`min-h-screen flex flex-col items-center justify-start 
+              text-slate-900 dark:text-slate-100 p-6 
+              bg-gradient-to-br transition-colors duration-1000 ${getBackgroundClass(
+                weather
+              )}`}
+    >
       {/* HEADER */}
       <header className="w-full max-w-6xl flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">🌤️ Weather & News</h1>
