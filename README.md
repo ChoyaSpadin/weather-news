@@ -1,12 +1,27 @@
-# React + Vite
+# 🌤️ Weather News App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação web que exibe **clima em tempo real** e **notícias locais** sobre a cidade pesquisada.  
+Desenvolvido com **React + Vite + TailwindCSS + Framer Motion**.
 
-Currently, two official plugins are available:
+## 🚀 Demonstração
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+🔗 [Acesse aqui](https://choyaspadin.github.io/weather-news/)
 
-## Expanding the ESLint configuration
+## ✨ Funcionalidades
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- 🔎 Busca de cidades com autocomplete (OpenWeather API)
+- 🌡️ Dados do clima em tempo real (temperatura, vento, umidade etc.)
+- 📰 Notícias locais integradas (GNews API)
+- 🗺️ Mapa da localização (Google Maps API)
+- 🌙 Tema claro/escuro com toggle
+- 🎬 Animações suaves (Framer Motion)
+
+## 🛠️ Tecnologias
+
+- [React](https://react.dev/)
+- [Vite](https://vitejs.dev/)
+- [TailwindCSS](https://tailwindcss.com/)
+- [Framer Motion](https://www.framer.com/motion/)
+- [OpenWeather API](https://openweathermap.org/)
+- [GNews API](https://gnews.io/)
+- [Google Maps API](https://developers.google.com/maps)
