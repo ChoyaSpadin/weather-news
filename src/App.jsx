@@ -117,7 +117,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col items-center justify-start bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-6">
       {/* HEADER */}
       <header className="w-full max-w-6xl flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">🌤️ Weather App</h1>
+        <h1 className="text-3xl font-bold">🌤️ Weather & News</h1>
 
         <button
           onClick={() => setIsDark((prev) => !prev)}
