@@ -7,6 +7,9 @@ Desenvolvido com **React + Vite + TailwindCSS + Framer Motion**.
 
 🔗 [Acesse aqui](https://choyaspadin.github.io/weather-news/)
 
+<img width="1234" height="776" alt="image" src="https://github.com/user-attachments/assets/8c6b4167-87e0-4a27-84f5-575f626361a1" />
+
+
 ## ✨ Funcionalidades
 
 - 🔎 Busca de cidades com autocomplete (OpenWeather API)
