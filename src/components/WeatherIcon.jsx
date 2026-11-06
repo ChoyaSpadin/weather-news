@@ -371,7 +371,8 @@ export default function WeatherIcon({ code, isDay = true, size = 96, className =
           <stop offset="50%" stopColor="#FACC15" />
           <stop offset="100%" stopColor="#EA580C" />
         </linearGradient>
-        <linearGradient id={`${uid}-mist`} x1="0%" y1="0%" x2="100%" y2="0%">
+        {/* userSpaceOnUse: linhas horizontais têm altura 0 e somem com o padrão objectBoundingBox */}
+        <linearGradient id={`${uid}-mist`} gradientUnits="userSpaceOnUse" x1="10" y1="0" x2="54" y2="0">
           <stop offset="0%" stopColor="#E2E8F0" />
           <stop offset="100%" stopColor="#94A3B8" />
         </linearGradient>

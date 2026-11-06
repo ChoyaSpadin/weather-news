@@ -5,6 +5,15 @@ Clima em tempo real, previsão de 5 dias, mapa e notícias da cidade que você p
 [![CI](https://github.com/ChoyaSpadin/weather-news/actions/workflows/ci.yml/badge.svg)](https://github.com/ChoyaSpadin/weather-news/actions/workflows/ci.yml)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
 
+![Weather News: clima atual, próximas 24 horas, previsão de 5 dias, detalhes e mapa](docs/screenshot.jpg)
+
+<details>
+<summary>O fundo e os ícones mudam com o clima (exemplo: trovoada)</summary>
+
+![Cenário de trovoada com chuva animada no fundo](docs/storm.jpg)
+
+</details>
+
 ## ✨ Funcionalidades
 
 - 🔎 Busca de cidades com autocomplete, navegação por teclado e buscas recentes
