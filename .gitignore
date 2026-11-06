@@ -23,6 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-node_modules
-dist
 .env
+.env.*
+!.env.example
+!.env.mock
+.vercel
+coverage

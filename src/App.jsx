@@ -1,334 +1,247 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatTime } from "./utils/formatTime";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { CloudOff, Map as MapIcon, RotateCw } from "lucide-react";
+import Scene from "./components/Scene.jsx";
+import SearchBar from "./components/SearchBar.jsx";
+import CurrentWeather from "./components/CurrentWeather.jsx";
+import HourlyForecast from "./components/HourlyForecast.jsx";
+import DailyForecast from "./components/DailyForecast.jsx";
+import Details from "./components/Details.jsx";
+import NewsList from "./components/NewsList.jsx";
+import Card, { Skeleton } from "./components/Card.jsx";
+import { useWeather } from "./hooks/useWeather.js";
+import { useLocalStorage } from "./hooks/useLocalStorage.js";
+import { getScene, isDaytime } from "./lib/scene.js";
+import { container } from "./lib/motion.js";
 
-// Função que decide se usa lat/lon ou q=city
-async function getWeather(city, lat = null, lon = null) {
-  const OPENWEATHER_KEY = import.meta.env.VITE_OPENWEATHER_KEY;
+// O mapa (Leaflet) só é baixado quando for exibido.
+const MapCard = lazy(() => import("./components/MapCard.jsx"));
 
-  let url = "";
+const DEFAULT_LOCATION = { lat: -23.5505, lon: -46.6333, label: "São Paulo" };
+const MAX_RECENT = 5;
 
-  if (lat && lon) {
-    url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=pt_br&appid=${OPENWEATHER_KEY}`;
-  } else {
-    url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=pt_br&appid=${OPENWEATHER_KEY}`;
-  }
+function UnitToggle({ unit, setUnit }) {
+  return (
+    <div role="radiogroup" aria-label="Unidade de temperatura" className="glass relative flex rounded-full p-1">
+      {["C", "F"].map((u) => (
+        <button
+          key={u}
+          role="radio"
+          aria-checked={unit === u}
+          onClick={() => setUnit(u)}
+          className="relative z-10 grid size-9 place-items-center rounded-full text-sm font-medium"
+        >
+          {unit === u && (
+            <motion.span
+              layoutId="unit-pill"
+              className="absolute inset-0 -z-10 rounded-full bg-white/25"
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            />
+          )}
+          °{u}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-  const res = await fetch(url);
+function LoadingState() {
+  return (
+    <div className="grid gap-4 lg:grid-cols-3" aria-busy="true" aria-label="Carregando">
+      <div className="flex flex-col gap-4 lg:col-span-2">
+        <Skeleton className="h-72 rounded-3xl" />
+        <Skeleton className="h-44 rounded-3xl" />
+      </div>
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-80 rounded-3xl" />
+        <Skeleton className="h-36 rounded-3xl" />
+      </div>
+    </div>
+  );
+}
 
-  if (!res.ok) {
-    throw new Error("Cidade não encontrada");
-  }
-
-  return res.json();
+function ErrorState({ message, onRetry }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="glass mx-auto flex max-w-md flex-col items-center gap-3 p-8 text-center"
+      role="alert"
+    >
+      <CloudOff className="size-10 text-white/70" aria-hidden="true" />
+      <p className="text-lg font-medium">{message}</p>
+      <p className="text-sm text-white/60">Confira o nome da cidade ou tente novamente.</p>
+      <button
+        onClick={onRetry}
+        className="mt-2 flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/30"
+      >
+        <RotateCw className="size-4" aria-hidden="true" /> Tentar de novo
+      </button>
+    </motion.div>
+  );
 }
 
 export default function App() {
-  const [city, setCity] = useState("");
-  const [weather, setWeather] = useState(null);
-  const [error, setError] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [news, setNews] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [selectedCoords, setSelectedCoords] = useState(null);
+  const { weather, news, load } = useWeather();
+  const [unit, setUnit] = useLocalStorage("unit", "C");
+  const [recent, setRecent] = useLocalStorage("recent-places", []);
+  const [lastLocation, setLastLocation] = useLocalStorage("last-location", DEFAULT_LOCATION);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState(null);
+  const searchSeq = useRef(0); // invalida pedidos de localização antigos
 
-  const GNEWS_KEY = import.meta.env.VITE_GNEWS_KEY;
-  const GOOGLEMAPS_KEY = import.meta.env.VITE_GOOGLEMAPS_KEY;
+  const search = useCallback(
+    (location) => {
+      searchSeq.current += 1;
+      setGeoError(null);
+      setLastLocation(location);
+      load(location);
+    },
+    [load, setLastLocation],
+  );
 
-  // Dark mode
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved) return saved === "dark";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-
+  // Primeira carga: última cidade vista (ou São Paulo).
   useEffect(() => {
-    const root = document.documentElement;
-    if (isDark) {
-      root.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [isDark]);
+    load(lastLocation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    setError(null);
-    setWeather(null);
+  // Guarda as cidades carregadas com sucesso como "recentes".
+  const data = weather.data;
+  useEffect(() => {
+    if (weather.status !== "success") return;
+    const { name, coord, sys } = data.current;
+    const place = { name, country: sys.country, lat: coord.lat, lon: coord.lon };
+    setRecent((prev) =>
+      [place, ...prev.filter((p) => p.name !== name || p.country !== sys.country)].slice(0, MAX_RECENT),
+    );
+  }, [weather.status, data, setRecent]);
 
-    try {
-      const data = await getWeather(
-        city,
-        selectedCoords?.lat,
-        selectedCoords?.lon
-      );
-      setWeather(data);
-      fetchNews(city);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  // Autocomplete
-  async function fetchSuggestions(query) {
-    if (!query) {
-      setSuggestions([]);
+  function locate() {
+    if (!("geolocation" in navigator)) {
+      setGeoError("Seu navegador não permite localização.");
       return;
     }
-
-    const OPENWEATHER_KEY = import.meta.env.VITE_OPENWEATHER_KEY;
-
-    try {
-      const res = await fetch(
-        `https://api.openweathermap.org/geo/1.0/direct?q=${query}&limit=5&appid=${OPENWEATHER_KEY}`
-      );
-      const data = await res.json();
-      setSuggestions(data);
-    } catch (err) {
-      console.error("Erro ao buscar sugestões:", err);
-    }
+    setLocating(true);
+    const seq = searchSeq.current;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        if (seq !== searchSeq.current) return; // usuário já buscou outra cidade
+        search({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
+      () => {
+        setLocating(false);
+        if (seq !== searchSeq.current) return;
+        setGeoError("Não foi possível obter sua localização. Verifique a permissão do navegador.");
+      },
+      { timeout: 10000, maximumAge: 300000 },
+    );
   }
 
-  function getBackgroundClass(weather) {
-    if (!weather)
-      return "from-slate-100 to-slate-300 dark:from-slate-900 dark:to-slate-700";
-
-    const condition = weather.weather[0].main.toLowerCase();
-
-    if (condition.includes("clear")) return "from-blue-400 to-cyan-500";
-    if (condition.includes("cloud")) return "from-gray-400 to-gray-600";
-    if (condition.includes("rain")) return "from-blue-700 to-gray-800";
-    if (condition.includes("thunderstorm"))
-      return "from-purple-700 to-gray-900";
-    if (condition.includes("snow")) return "from-blue-200 to-white";
-    if (condition.includes("mist") || condition.includes("fog"))
-      return "from-gray-300 to-gray-500";
-
-    return "from-slate-100 to-slate-300 dark:from-slate-900 dark:to-slate-700";
-  }
-
-  // Notícias (GNews)
-  async function fetchNews(cityName) {
-    try {
-      const res = await fetch(
-        `https://gnews.io/api/v4/search?q=${encodeURIComponent(
-          cityName
-        )}&lang=pt&max=5&token=${GNEWS_KEY}`
-      );
-      const data = await res.json();
-      setNews(data.articles || []);
-    } catch (err) {
-      console.error("Erro ao buscar notícias:", err);
-    }
-  }
-
-  // Animação do ícone de tema
-  const iconVariants = {
-    initial: { scale: 0.8, opacity: 0, rotate: -90 },
-    animate: { scale: 1, opacity: 1, rotate: 0 },
-    exit: { scale: 0.8, opacity: 0, rotate: 90 },
-  };
+  const current = data?.current;
+  const timezone = current?.timezone ?? 0;
+  const isDay = current ? isDaytime(current) : true;
+  const scene = current ? getScene(current.weather[0].id, isDay) : "idle";
+  const firstLoad = weather.status === "loading" && !data;
 
   return (
-    <div
-      className={`min-h-screen flex flex-col items-center justify-start 
-              text-slate-900 dark:text-slate-100 p-6 
-              bg-gradient-to-br transition-colors duration-1000 ${getBackgroundClass(
-                weather
-              )}`}
-    >
-      {/* HEADER */}
-      <header className="w-full max-w-6xl flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">🌤️ Weather & News</h1>
+    <>
+      <Scene scene={scene} />
 
-        <button
-          onClick={() => setIsDark((prev) => !prev)}
-          className="w-12 h-12 flex items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-md"
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            {isDark ? (
-              <motion.span
-                key="moon"
-                variants={iconVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ duration: 0.3 }}
-                className="text-lg"
-              >
-                🌙
-              </motion.span>
-            ) : (
-              <motion.span
-                key="sun"
-                variants={iconVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ duration: 0.3 }}
-                className="text-lg"
-              >
-                ☀️
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
-      </header>
+      <div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:py-10">
+        <header className="flex flex-wrap items-center gap-4">
+          <a href="./" className="mr-auto flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <span className="grid size-9 place-items-center rounded-xl bg-white/15 text-xl ring-1 ring-white/20">
+              🌤️
+            </span>
+            Weather News
+          </a>
+          <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:justify-center sm:flex">
+            <SearchBar onSelect={search} onLocate={locate} locating={locating} recent={recent} />
+          </div>
+          <UnitToggle unit={unit} setUnit={setUnit} />
+        </header>
 
-      {/* FORM */}
-      <form
-        onSubmit={handleSearch}
-        className="flex flex-col gap-2 mb-6 relative w-72"
-      >
-        <input
-          type="text"
-          value={city}
-          onChange={(e) => {
-            const value = e.target.value;
-            setCity(value);
-            setSelectedCoords(null); // reset coords se o usuário digitar
-            fetchSuggestions(value);
-          }}
-          placeholder="Digite o nome da cidade..."
-          className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-        >
-          Buscar
-        </button>
+        <AnimatePresence>
+          {geoError && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              role="status"
+              className="text-center text-sm text-amber-100"
+            >
+              {geoError}
+            </motion.p>
+          )}
+        </AnimatePresence>
 
-        {suggestions.length > 0 && (
-          <ul className="absolute top-14 left-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg w-full max-h-60 overflow-y-auto z-10">
-            {suggestions.map((s, i) => (
-              <li
-                key={i}
-                onClick={() => {
-                  setCity(s.name);
-                  setSuggestions([]);
-                  setSelectedCoords({ lat: s.lat, lon: s.lon }); // 🔹 salva coordenadas
-                }}
-                className="px-4 py-2 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
-              >
-                {s.name}, {s.country}
-              </li>
-            ))}
-          </ul>
-        )}
-      </form>
+        <main className="flex-1">
+          {firstLoad && <LoadingState />}
 
-      {error && <p className="text-red-500">{error}</p>}
+          {weather.status === "error" && (
+            <ErrorState message={weather.error} onRetry={() => load(lastLocation)} />
+          )}
 
-      {/* GRID RESPONSIVO */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl">
-        {/* CARD DO CLIMA */}
-        {weather && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md text-center flex flex-col items-center gap-3"
-          >
-            <h2 className="text-xl font-semibold">
-              {weather.name}, {weather.sys.country}
-            </h2>
-
-            <p className="text-3xl font-bold">
-              {Math.round(weather.main.temp)}°C
-            </p>
-
-            <img
-              src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@4x.png`}
-              alt={weather.weather[0].description}
-              className="w-28 h-28"
-            />
-
-            <p className="capitalize">{weather.weather[0].description}</p>
-
-            <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
-              <p>Sensação térmica: {Math.round(weather.main.feels_like)}°C</p>
-              <p>
-                Mín: {Math.round(weather.main.temp_min)}°C | Máx:{" "}
-                {Math.round(weather.main.temp_max)}°C
-              </p>
-              <p>Umidade: {weather.main.humidity}%</p>
-            </div>
-
+          {current && weather.status !== "error" && (
             <motion.div
-              initial={{ rotate: 0 }}
-              animate={{ rotate: weather.wind.deg }}
-              transition={{ duration: 1 }}
-              className="mt-2 flex flex-col items-center text-sm text-slate-600 dark:text-slate-300"
+              key={current.id}
+              variants={container}
+              initial="hidden"
+              animate="show"
+              className={`grid gap-4 transition-opacity lg:grid-cols-3 ${
+                weather.status === "loading" ? "opacity-60" : ""
+              }`}
             >
-              <p>Vento: {Math.round(weather.wind.speed * 3.6)} km/h</p>
-              <span className="text-2xl">🧭</span>
-            </motion.div>
+              <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+                <CurrentWeather current={current} timezone={timezone} isDay={isDay} unit={unit} />
+                <HourlyForecast list={data.forecast.list} timezone={timezone} unit={unit} />
+                <Details current={current} timezone={timezone} unit={unit} />
+              </div>
 
-            <div className="flex justify-between w-full mt-4 text-sm text-slate-600 dark:text-slate-300">
-              <p>🌅 {formatTime(weather.sys.sunrise)}</p>
-              <p>🌇 {formatTime(weather.sys.sunset)}</p>
-            </div>
+              <div className="flex min-w-0 flex-col gap-4">
+                <DailyForecast list={data.forecast.list} timezone={timezone} unit={unit} now={current.dt} />
+                <Card title="Mapa" icon={MapIcon} className="flex flex-1 flex-col overflow-hidden">
+                  <div className="-mx-5 -mb-5 flex-1 overflow-hidden rounded-b-3xl">
+                    <Suspense fallback={<Skeleton className="h-64 rounded-none" />}>
+                      <MapCard lat={current.coord.lat} lon={current.coord.lon} />
+                    </Suspense>
+                  </div>
+                </Card>
+              </div>
 
-            <button
-              onClick={() => setShowDetails((prev) => !prev)}
-              className="mt-4 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition"
-            >
-              {showDetails ? "Esconder detalhes ▲" : "Mostrar detalhes ▼"}
-            </button>
-
-            <motion.div
-              initial={false}
-              animate={{
-                height: showDetails ? "auto" : 0,
-                opacity: showDetails ? 1 : 0,
-              }}
-              transition={{ duration: 0.4 }}
-              className="overflow-hidden w-full mt-3 text-sm text-slate-600 dark:text-slate-300"
-            >
-              <div className="flex flex-col gap-2 text-left">
-                <p>🌡️ Pressão: {weather.main.pressure} hPa</p>
-                <p>👁️ Visibilidade: {weather.visibility / 1000} km</p>
-                <p>☁️ Nuvens: {weather.clouds.all}%</p>
-                <p>
-                  📍 Coordenadas: {weather.coord.lat}, {weather.coord.lon}
-                </p>
+              <div className="lg:col-span-3">
+                <NewsList city={current.name} news={news} />
               </div>
             </motion.div>
+          )}
+        </main>
 
-            {/* Mapa */}
-            <img
-              src={`https://maps.googleapis.com/maps/api/staticmap?center=${weather.coord.lat},${weather.coord.lon}&zoom=10&size=600x300&markers=color:red%7C${weather.coord.lat},${weather.coord.lon}&key=${GOOGLEMAPS_KEY}`}
-              alt="Mapa da cidade"
-              className="rounded-lg shadow-md mt-4"
-            />
-          </motion.div>
-        )}
-
-        {/* CARD DE NOTÍCIAS */}
-        {news.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md flex flex-col gap-4 max-h-[600px] overflow-y-auto">
-            <h2 className="text-xl font-semibold">📰 Notícias em {city}</h2>
-            {news.map((article, i) => (
-              <a
-                key={i}
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block border-b border-slate-300 dark:border-slate-700 pb-3 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md p-2 transition"
-              >
-                <h3 className="font-medium">{article.title}</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {article.source.name} -{" "}
-                  {new Date(article.publishedAt).toLocaleDateString("pt-BR")}
-                </p>
-              </a>
-            ))}
-          </div>
-        )}
+        <footer className="text-center text-xs text-white/50">
+          Dados de{" "}
+          <a className="underline hover:text-white" href="https://openweathermap.org/" target="_blank" rel="noreferrer">
+            OpenWeather
+          </a>
+          ,{" "}
+          <a className="underline hover:text-white" href="https://gnews.io/" target="_blank" rel="noreferrer">
+            GNews
+          </a>{" "}
+          e{" "}
+          <a className="underline hover:text-white" href="https://www.openstreetmap.org/" target="_blank" rel="noreferrer">
+            OpenStreetMap
+          </a>
+          {" · "}
+          <a
+            className="underline hover:text-white"
+            href="https://github.com/ChoyaSpadin/weather-news"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Código no GitHub
+          </a>
+        </footer>
       </div>
-    </div>
+    </>
   );
 }

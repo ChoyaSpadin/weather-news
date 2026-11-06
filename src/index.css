@@ -1,3 +1,85 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply min-h-dvh bg-slate-950 font-sans text-white antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-white/80;
+  }
+}
+
+@utility glass {
+  @apply rounded-3xl bg-white/10 shadow-xl shadow-black/10 ring-1 ring-white/15 backdrop-blur-xl;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Partículas do fundo (CSS puro para ficar leve) */
+@keyframes fall {
+  from { transform: translate3d(0, -10vh, 0); }
+  to { transform: translate3d(-6vw, 110vh, 0); }
+}
+@keyframes snowfall {
+  0% { transform: translate3d(0, -10vh, 0); }
+  50% { transform: translate3d(3vw, 50vh, 0); }
+  100% { transform: translate3d(-2vw, 110vh, 0); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+@keyframes flash {
+  0%, 88%, 92%, 100% { opacity: 0; }
+  89%, 91% { opacity: 0.35; }
+}
+@keyframes float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4vw, -3vh, 0) scale(1.08); }
+}
+
+.animate-fall { animation: fall linear infinite; }
+.animate-snowfall { animation: snowfall linear infinite; }
+.animate-twinkle { animation: twinkle ease-in-out infinite; }
+.animate-flash { animation: flash 7s linear infinite; }
+.animate-float { animation: float ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fall,
+  .animate-snowfall,
+  .animate-twinkle,
+  .animate-flash,
+  .animate-float {
+    animation: none;
+  }
+}
+
+/* Leaflet no tema do app */
+.map-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6);
+}
+.leaflet-container {
+  background: transparent;
+  font-family: inherit;
+}
+.leaflet-control-attribution {
+  background: rgb(15 23 42 / 0.6) !important;
+  color: rgb(255 255 255 / 0.6) !important;
+  font-size: 10px;
+}
+.leaflet-control-attribution a {
+  color: rgb(255 255 255 / 0.8) !important;
+}

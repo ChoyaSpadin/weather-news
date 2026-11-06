@@ -1,30 +1,90 @@
-# 🌤️ Weather News App
+# 🌤️ Weather News
 
-Aplicação web que exibe **clima em tempo real** e **notícias locais** sobre a cidade pesquisada.  
-Desenvolvido com **React + Vite + TailwindCSS + Framer Motion**.
+Clima em tempo real, previsão de 5 dias, mapa e notícias da cidade que você pesquisar, com um visual que muda conforme o tempo lá fora: sol, noite estrelada, chuva, tempestade, neve ou névoa.
 
-## 🚀 Demonstração
-
-🔗 [Acesse aqui](https://choyaspadin.github.io/weather-news/)
-
-<img width="1234" height="776" alt="image" src="https://github.com/user-attachments/assets/8c6b4167-87e0-4a27-84f5-575f626361a1" />
-
+[![CI](https://github.com/ChoyaSpadin/weather-news/actions/workflows/ci.yml/badge.svg)](https://github.com/ChoyaSpadin/weather-news/actions/workflows/ci.yml)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
 
 ## ✨ Funcionalidades
 
-- 🔎 Busca de cidades com autocomplete (OpenWeather API)
-- 🌡️ Dados do clima em tempo real (temperatura, vento, umidade etc.)
-- 📰 Notícias locais integradas (GNews API)
-- 🗺️ Mapa da localização (Google Maps API)
-- 🌙 Tema claro/escuro com toggle
-- 🎬 Animações suaves (Framer Motion)
+- 🔎 Busca de cidades com autocomplete, navegação por teclado e buscas recentes
+- 📍 Botão "usar minha localização"
+- 🌡️ Clima atual: temperatura, sensação, umidade, vento (com bússola), pressão, visibilidade e nuvens
+- 🕒 Próximas 24 horas e 🗓️ previsão de 5 dias com faixa de mínima e máxima
+- 🌅 Arco do sol entre o nascer e o pôr
+- 🗺️ Mapa interativo (OpenStreetMap, sem chave)
+- 📰 Notícias da cidade (GNews)
+- 🎬 Animações com Motion, fundo animado por clima e ícones SVG animados
+- °C / °F, layout responsivo e respeito a "reduzir movimento" do sistema
+
+## 🔐 Como as chaves ficam protegidas
+
+O navegador nunca recebe as chaves de API. Ele chama `/api/weather`, `/api/geo` e `/api/news`, que são funções serverless (pasta [`api/`](api)) rodando na Vercel. Só elas leem `OPENWEATHER_KEY` e `GNEWS_KEY` das variáveis de ambiente.
+
+```
+Navegador ──► /api/* (Vercel) ──► OpenWeather / GNews
+                 └─ chaves ficam aqui
+```
+
+## 🚀 Rodando localmente
+
+Requisitos: Node 20 ou mais novo.
+
+```bash
+git clone https://github.com/ChoyaSpadin/weather-news.git
+cd weather-news
+npm install
+```
+
+**Sem chaves (dados de exemplo):**
+
+```bash
+npm run dev:mock
+```
+
+Dá para trocar o clima de exemplo em `.env.mock` (`MOCK_CODE=500` chuva, `211` trovoada, `600` neve, `741` névoa).
+
+**Com dados reais:** copie `.env.example` para `.env`, preencha as chaves e rode `npm run dev`. O servidor do Vite serve as mesmas funções de `api/` localmente.
+
+- OpenWeather: crie uma conta grátis e pegue a chave em <https://home.openweathermap.org/api_keys>
+- GNews: <https://gnews.io/> (plano grátis)
+
+## ☁️ Deploy na Vercel
+
+1. Importe o repositório em <https://vercel.com/new> (a Vercel detecta o Vite sozinha).
+2. Em **Settings → Environment Variables**, adicione `OPENWEATHER_KEY` e `GNEWS_KEY`.
+3. Faça o deploy. As funções de `api/` sobem junto com o site.
+
+## 🧪 Scripts
+
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | Servidor local com dados reais (precisa do `.env`) |
+| `npm run dev:mock` | Servidor local com dados de exemplo |
+| `npm test` | Testes (Vitest) |
+| `npm run lint` | ESLint |
+| `npm run build` | Build de produção em `dist/` |
+
+## 🗂️ Estrutura
+
+```
+api/                 funções serverless (Vercel)
+  _lib/handlers.js   lógica das chamadas, validação e erros
+  _lib/devServer.js  serve /api no `npm run dev`
+  _lib/mock.js       dados de exemplo
+src/
+  components/        cards, busca, cenário de fundo, ícones animados
+  hooks/             useWeather, useDebounce, useLocalStorage, useCountUp
+  lib/               chamadas à API, formatação, previsão, cenários
+tests/               testes do backend e das funções de previsão
+```
 
 ## 🛠️ Tecnologias
 
-- [React](https://react.dev/)
-- [Vite](https://vitejs.dev/)
-- [TailwindCSS](https://tailwindcss.com/)
-- [Framer Motion](https://www.framer.com/motion/)
-- [OpenWeather API](https://openweathermap.org/)
-- [GNews API](https://gnews.io/)
-- [Google Maps API](https://developers.google.com/maps)
+[React 19](https://react.dev/) · [Vite](https://vitejs.dev/) · [Tailwind CSS 4](https://tailwindcss.com/) · [Motion](https://motion.dev/) · [React Leaflet](https://react-leaflet.js.org/) · [Lucide](https://lucide.dev/) · [Vitest](https://vitest.dev/)
+
+Dados: [OpenWeather](https://openweathermap.org/) · [GNews](https://gnews.io/) · [OpenStreetMap](https://www.openstreetmap.org/copyright)
+
+## 📄 Licença
+
+[MIT](LICENSE)
