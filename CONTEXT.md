@@ -21,9 +21,9 @@ App de clima + previsão + mapa + notícias por cidade. React 19 + Vite 7 + Tail
 `npm run dev:mock` (sem chaves) · `npm run dev` · `npm test` · `npm run lint` · `npm run build`. CI em `.github/workflows/ci.yml`.
 
 ## Estado (2026-11-05)
-- v2 reescrita do zero. Repo ainda privado; branch `site-desativado` (tinha chaves no bundle) apagada.
+- v2 reescrita do zero. Repo público desde 2026-11-05. Branch `site-desativado` (tinha chaves no bundle), deploys antigos e ambiente `github-pages` apagados; Pages desligado.
 - Mapa usa tiles do OSM com filtro CSS escuro (CARTO passou a exigir chave).
 
 ## Próximos passos
-- Usuário trocar as chaves antigas (OpenWeather, GNews, Google Maps) e deixar o repo público.
+- Chave do Google Maps apagada; trocar as do OpenWeather e GNews no deploy.
 - Deploy na Vercel com as variáveis de ambiente; depois pôr link e print no README.
